@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Build Your Own Redis — Java</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; max-width: 760px; margin: 2rem auto; padding: 0 1rem; line-height: 1.55; }
+  h1 { font-size: 1.8rem; margin-bottom: .2rem; }
+  .sub { color: #888; margin-top: 0; }
+  code, pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  pre { background: #111; color: #e8e8e8; padding: 1rem; border-radius: 8px; overflow-x: auto; font-size: .85rem; }
+  pre .resp { color: #8fd3ff; }
+  pre .out { color: #9be28f; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+  th, td { border: 1px solid #8884; padding: .45rem .6rem; text-align: left; font-size: .92rem; }
+  th { background: #8882; }
+  .note { background: #ffd75e22; border-left: 4px solid #d9a400; padding: .6rem .9rem; border-radius: 4px; }
+  footer { margin-top: 2.5rem; color: #888; font-size: .85rem; }
+</style>
+</head>
+<body>
+<h1>Build Your Own Redis — in Java</h1>
+<p class="sub">A minimal, real Redis clone: a TCP server on port 6379 that speaks the RESP protocol. Pure Java 21 standard library — no dependencies, no Docker.</p>
+
+<h2>What it does</h2>
+<p>It is a working in-memory key–value store you can talk to with <code>redis-cli</code> or any RESP client, exactly like real Redis. It handles many clients at once (one virtual thread per connection) and supports key expiry.</p>
+
+<table>
+  <tr><th>Command</th><th>What it does</th></tr>
+  <tr><td><code>PING [message]</code></td><td>Replies <code>+PONG</code> (or echoes the message)</td></tr>
+  <tr><td><code>ECHO message</code></td><td>Echoes the message back</td></tr>
+  <tr><td><code>SET key value [EX seconds | PX ms]</code></td><td>Stores a value, optionally with an expiry</td></tr>
+  <tr><td><code>GET key</code></td><td>Returns the value, or <code>nil</code> if missing / expired</td></tr>
+  <tr><td><code>DEL key [key …]</code></td><td>Deletes keys, replies with how many were removed</td></tr>
+  <tr><td><code>EXISTS key [key …]</code></td><td>Counts how many of the keys exist</td></tr>
+  <tr><td><code>TTL key</code></td><td>Seconds until expiry (<code>-1</code> = no expiry, <code>-2</code> = missing)</td></tr>
+</table>
+
+<h2>Example session</h2>
+<p>Run the server, then talk to it with <code>redis-cli</code>:</p>
+<pre><span class="resp">$ redis-cli -p 6379 PING</span>
+<span class="out">PONG</span>
+<span class="resp">$ redis-cli -p 6379 ECHO "hello world"</span>
+<span class="out">"hello world"</span>
+<span class="resp">$ redis-cli -p 6379 SET name luna</span>
+<span class="out">OK</span>
+<span class="resp">$ redis-cli -p 6379 GET name</span>
+<span class="out">"luna"</span>
+<span class="resp">$ redis-cli -p 6379 SET temp v PX 200</span>
+<span class="out">OK</span>
+<span class="resp">$ redis-cli -p 6379 GET temp   # after 200 ms</span>
+<span class="out">(nil)</span></pre>
+
+<p>Under the hood, <code>redis-cli</code> sends RESP — arrays of bulk strings. A <code>PING</code> on the wire is <code>*1\r\n$4\r\nPING\r\n</code> and the server answers <code>+PONG\r\n</code>. You can try it with plain <code>nc</code>:</p>
+<pre><span class="resp">$ printf '*1\r\n$4\r\nPING\r\n' | nc localhost 6379</span>
+<span class="out">+PONG</span></pre>
+
+<h2>How to run it</h2>
+<pre><span class="resp"># Needs Java 21+ — no build step, no dependencies
+$ java src/RedisServer.java
+redis-clone listening on port 6379 (RESP, Java 21)
+
+# Or compile first:
+$ javac -d out src/RedisServer.java
+$ java -cp out RedisServer
+
+# Run the test suite (30 checks: PING, ECHO, SET/GET,
+# expiry, errors, concurrent clients):
+$ python3 tests/test_redis.py</span></pre>
+
+<div class="note"><strong>Note:</strong> this page is a static demo — the Redis server itself can't run in a browser. It runs on your machine (or any machine with Java 21) and listens on TCP port 6379. See the README for deploy options.</div>
+
+<h2>What it doesn't do (yet)</h2>
+<ul>
+  <li>Data is in memory only — everything is lost when the server stops (no persistence / RDB / AOF).</li>
+  <li>No lists, sets, hashes or sorted sets — strings only.</li>
+  <li>No authentication, no replication, no clustering, no pub/sub.</li>
+  <li>Single-process, single-node.</li>
+</ul>
+<p>Next steps are listed in <code>README.md</code> in the repo.</p>
+
+<footer>build-your-own-redis-java · MIT licensed · Java 21, standard library only</footer>
+</body>
+</html>
