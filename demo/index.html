@@ -22,20 +22,27 @@
 </head>
 <body>
 <h1>Build Your Own Redis — in Java</h1>
-<p class="sub">A minimal, real Redis clone: a TCP server on port 6379 that speaks the RESP protocol. Pure Java 21 standard library — no dependencies, no Docker.</p>
+<p class="sub">A real Redis clone: a TCP server on port 6379 that speaks the RESP protocol — with lists, streams, transactions, pub/sub, sorted sets, RDB persistence and replication. Pure Java 21 standard library — no dependencies, no Docker.</p>
 
 <h2>What it does</h2>
-<p>It is a working in-memory key–value store you can talk to with <code>redis-cli</code> or any RESP client, exactly like real Redis. It handles many clients at once (one virtual thread per connection) and supports key expiry.</p>
+<p>It is a working in-memory store you can talk to with <code>redis-cli</code> or any RESP client, exactly like real Redis. It handles many clients at once (one virtual thread per connection), supports key expiry, and implements the CodeCrafters "Build your own Redis" challenge well past the starter stages: lists, streams, transactions with optimistic locking, pub/sub, sorted sets, RDB loading, a simple AOF log, and master–replica replication.</p>
 
 <table>
   <tr><th>Command</th><th>What it does</th></tr>
   <tr><td><code>PING [message]</code></td><td>Replies <code>+PONG</code> (or echoes the message)</td></tr>
   <tr><td><code>ECHO message</code></td><td>Echoes the message back</td></tr>
-  <tr><td><code>SET key value [EX seconds | PX ms]</code></td><td>Stores a value, optionally with an expiry</td></tr>
+  <tr><td><code>SET key value [EX seconds | PX ms] [NX | XX] [GET] [KEEPTTL]</code></td><td>Stores a value, optionally with an expiry</td></tr>
   <tr><td><code>GET key</code></td><td>Returns the value, or <code>nil</code> if missing / expired</td></tr>
   <tr><td><code>DEL key [key …]</code></td><td>Deletes keys, replies with how many were removed</td></tr>
   <tr><td><code>EXISTS key [key …]</code></td><td>Counts how many of the keys exist</td></tr>
-  <tr><td><code>TTL key</code></td><td>Seconds until expiry (<code>-1</code> = no expiry, <code>-2</code> = missing)</td></tr>
+  <tr><td><code>TTL key</code> / <code>EXPIRE key seconds</code></td><td>Seconds until expiry (<code>-1</code> = no expiry, <code>-2</code> = missing)</td></tr>
+  <tr><td><code>INCR / DECR / INCRBY</code></td><td>Atomic counters</td></tr>
+  <tr><td><code>RPUSH / LPUSH / LRANGE / LLEN / LPOP / RPOP / LREM / BLPOP</code></td><td>Lists (BLPOP blocks until data arrives)</td></tr>
+  <tr><td><code>XADD / XRANGE / XREAD [BLOCK ms]</code></td><td>Streams, with auto-generated IDs and blocking reads</td></tr>
+  <tr><td><code>MULTI / EXEC / DISCARD / WATCH</code></td><td>Transactions with optimistic locking</td></tr>
+  <tr><td><code>SUBSCRIBE / PUBLISH / UNSUBSCRIBE</code></td><td>Pub/sub messaging</td></tr>
+  <tr><td><code>ZADD / ZRANK / ZRANGE / ZCARD / ZSCORE / ZREM</code></td><td>Sorted sets</td></tr>
+  <tr><td><code>INFO replication</code> / <code>CONFIG GET</code></td><td>Server info and <code>--dir</code> / <code>--dbfilename</code> config</td></tr>
 </table>
 
 <h2>Example session</h2>
@@ -66,17 +73,33 @@ redis-clone listening on port 6379 (RESP, Java 21)
 $ javac -d out src/RedisServer.java
 $ java -cp out RedisServer
 
-# Run the test suite (30 checks: PING, ECHO, SET/GET,
-# expiry, errors, concurrent clients):
+# Run the test suite (162 checks: the starter 30 plus lists,
+# streams, transactions, pub/sub, sorted sets, RDB loading
+# and replication — see README for the full list):
 $ python3 tests/test_redis.py</span></pre>
+
+<h2>Replication &amp; persistence</h2>
+<pre><span class="resp"># Master on 6379, replica on 6380:
+$ java src/RedisServer.java --port 6379
+$ java src/RedisServer.java --port 6380 --replicaof 127.0.0.1 6379
+
+$ redis-cli -p 6379 SET replkey replval   # OK
+$ redis-cli -p 6380 GET replkey          # "replval"
+$ redis-cli -p 6379 WAIT 1 1000          # 1
+
+# Load an RDB snapshot at startup:
+$ java src/RedisServer.java --dir /tmp/mydata --dbfilename dump.rdb
+# Append-only log (replayed at startup):
+$ java src/RedisServer.java --dir /tmp/mydata --appendonly yes</span></pre>
 
 <div class="note"><strong>Note:</strong> this page is a static demo — the Redis server itself can't run in a browser. It runs on your machine (or any machine with Java 21) and listens on TCP port 6379. See the README for deploy options.</div>
 
 <h2>What it doesn't do (yet)</h2>
 <ul>
-  <li>Data is in memory only — everything is lost when the server stops (no persistence / RDB / AOF).</li>
-  <li>No lists, sets, hashes or sorted sets — strings only.</li>
-  <li>No authentication, no replication, no clustering, no pub/sub.</li>
+  <li>No hashes or sets (<code>HSET</code>, <code>SADD</code> …) — the tutorial has no stages for them.</li>
+  <li>No bitmaps, geospatial commands, or authentication / ACLs.</li>
+  <li>RDB is read-only (it loads snapshots, never writes them); the AOF is a single file, not Redis's manifest format.</li>
+  <li>Replication is full resync only (<code>PSYNC ? -1</code>); no partial resync, no cluster mode.</li>
   <li>Single-process, single-node.</li>
 </ul>
 <p>Next steps are listed in <code>README.md</code> in the repo.</p>
