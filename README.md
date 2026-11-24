@@ -9,6 +9,19 @@ sorted sets, RDB persistence, and master–replica replication.
 > Repo name: **`build-your-own-redis-java`** (already on GitHub under
 > `abhiyadavj2006-del`, with GitHub Pages live for the demo page).
 
+## Live web version — try it in your browser
+
+**https://abhiyadavj2006-del.github.io/build-your-own-redis-java/demo/live.html**
+
+A pure-JavaScript twin of the Redis server that runs 100% in the browser —
+no server, no build step, no CDN, no account. It has a terminal-style UI
+(type commands like `SET`, `GET`, `LPUSH`, `XADD`, `MULTI`/`EXEC`,
+`SUBSCRIBE`…) backed by a small in-browser engine in `demo/redis.js`,
+and saves your keys in the browser (`localStorage`). The classic static
+demo page is still at `demo/index.html` and links to it. The Java version
+remains the real TCP server (RESP, RDB, replication); the web terminal is
+for trying the commands instantly.
+
 ## Source
 
 This follows the CodeCrafters **"Build your own Redis"** challenge

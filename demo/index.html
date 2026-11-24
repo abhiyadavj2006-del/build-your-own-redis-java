@@ -24,6 +24,8 @@
 <h1>Build Your Own Redis — in Java</h1>
 <p class="sub">A real Redis clone: a TCP server on port 6379 that speaks the RESP protocol — with lists, streams, transactions, pub/sub, sorted sets, RDB persistence and replication. Pure Java 21 standard library — no dependencies, no Docker.</p>
 
+<div class="note"><strong>Try it live, right now:</strong> <a href="live.html">the in-browser Redis terminal</a> — the same commands, re-implemented in pure JavaScript. No install, no server; your keys are saved in your browser's localStorage.</div>
+
 <h2>What it does</h2>
 <p>It is a working in-memory store you can talk to with <code>redis-cli</code> or any RESP client, exactly like real Redis. It handles many clients at once (one virtual thread per connection), supports key expiry, and implements the CodeCrafters "Build your own Redis" challenge well past the starter stages: lists, streams, transactions with optimistic locking, pub/sub, sorted sets, RDB loading, a simple AOF log, and master–replica replication.</p>
 

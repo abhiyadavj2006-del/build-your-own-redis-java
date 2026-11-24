@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Live Redis — in your browser · Build Your Own Redis (Java)</title>
+<style>
+  :root { color-scheme: light dark; }
+  body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; max-width: 960px; margin: 2rem auto; padding: 0 1rem; line-height: 1.55; }
+  h1 { font-size: 1.8rem; margin-bottom: .2rem; }
+  .sub { color: #888; margin-top: 0; }
+  code, pre { font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace; }
+  a { color: #2f81f7; }
+  .note { background: #ffd75e22; border-left: 4px solid #d9a400; padding: .6rem .9rem; border-radius: 4px; }
+  .live-badge { display: inline-block; background: #1a7f37; color: #fff; font-size: .75rem; font-weight: 700; padding: .15rem .5rem; border-radius: 999px; vertical-align: middle; margin-left: .4rem; }
+  .layout { display: grid; grid-template-columns: 1fr 280px; gap: 1rem; align-items: start; }
+  @media (max-width: 760px) { .layout { grid-template-columns: 1fr; } }
+  /* terminal */
+  .term { background: #111; color: #e8e8e8; border-radius: 8px; overflow: hidden; }
+  .term-head { display: flex; justify-content: space-between; align-items: center; padding: .5rem .8rem; background: #1e1e1e; font-size: .8rem; color: #aaa; }
+  .term-head .dots span { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; }
+  .term-head .dots .r { background: #ff5f56; } .term-head .dots .g { background: #ffbd2e; } .term-head .dots .y { background: #27c93f; }
+  .term-head button { background: #333; color: #ddd; border: 1px solid #555; border-radius: 5px; padding: .15rem .55rem; cursor: pointer; font-size: .8rem; margin-left: .35rem; }
+  .term-head button:hover { background: #444; }
+  #output { height: 380px; overflow-y: auto; padding: .8rem 1rem; margin: 0; font-size: .85rem; white-space: pre-wrap; word-break: break-word; }
+  #output .cmd { color: #8fd3ff; }
+  #output .resp { color: #9be28f; }
+  #output .err { color: #ff7b72; }
+  #output .sys { color: #888; }
+  .input-row { display: flex; border-top: 1px solid #333; }
+  .input-row .prompt { padding: .7rem 0 .7rem .9rem; color: #9be28f; font-family: ui-monospace, Menlo, Consolas, monospace; }
+  #cmd { flex: 1; background: transparent; border: 0; outline: 0; color: #e8e8e8; font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .9rem; padding: .7rem .5rem .7rem 0; }
+  /* key browser */
+  .keys { border: 1px solid #8884; border-radius: 8px; padding: .8rem; }
+  .keys h2 { font-size: 1rem; margin: 0 0 .4rem; }
+  .keys .meta { color: #888; font-size: .85rem; margin: 0 0 .6rem; }
+  #keylist { list-style: none; margin: 0; padding: 0; font-size: .85rem; }
+  #keylist li { border-top: 1px solid #8882; padding: .45rem 0; cursor: pointer; }
+  #keylist li:hover { background: #8881; }
+  #keylist .k { font-family: ui-monospace, Menlo, Consolas, monospace; font-weight: 600; }
+  #keylist .t { color: #888; font-size: .75rem; margin-left: .35rem; }
+  #keylist .p { color: #888; display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #keylist .empty { color: #888; cursor: default; }
+  /* examples */
+  .examples { margin-top: 1rem; }
+  .examples h2 { font-size: 1.1rem; }
+  .chips { display: flex; flex-wrap: wrap; gap: .4rem; }
+  .chips button { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .8rem; background: #8881; border: 1px solid #8884; border-radius: 999px; padding: .3rem .7rem; cursor: pointer; color: inherit; }
+  .chips button:hover { background: #8883; }
+  .chips button b { color: #2f81f7; font-weight: 600; }
+  table { border-collapse: collapse; width: 100%; margin: 1rem 0; }
+  th, td { border: 1px solid #8884; padding: .45rem .6rem; text-align: left; font-size: .92rem; }
+  th { background: #8882; }
+  footer { margin-top: 2.5rem; color: #888; font-size: .85rem; }
+</style>
+</head>
+<body>
+<h1>Live Redis — in your browser <span class="live-badge">LIVE</span></h1>
+<p class="sub">The same Redis from the Java server (<a href="index.html">about the Java version</a>), re-implemented in pure JavaScript. It runs entirely in this page — no server, no network, no account. Type a command below and press Enter.</p>
+
+<div class="note"><strong>Your data stays in this browser.</strong> Keys are saved in <code>localStorage</code>, so they survive a reload — but only on this device and browser. <code>FLUSHDB</code> wipes them. The Java server adds streams, pub/sub and replication; this page adds the hashes and sets the Java tutorial leaves out.</div>
+
+<div class="layout" style="margin-top:1rem">
+  <div>
+    <div class="term">
+      <div class="term-head">
+        <span class="dots"><span class="r"></span><span class="g"></span><span class="y"></span> redis — 127.0.0.1:6379 (in-browser)</span>
+        <span>
+          <button id="clearBtn" type="button" title="Clear the terminal">Clear</button>
+          <button id="flushBtn" type="button" title="Delete all keys">FLUSHDB</button>
+        </span>
+      </div>
+      <pre id="output" aria-live="polite"></pre>
+      <div class="input-row">
+        <span class="prompt">127.0.0.1:6379&gt;</span>
+        <input id="cmd" type="text" autocomplete="off" autocapitalize="off" spellcheck="false"
+               placeholder='Try: SET name luna   (↑ / ↓ for history)' aria-label="Redis command">
+      </div>
+    </div>
+
+    <div class="examples">
+      <h2>Try these</h2>
+      <p style="color:#888;font-size:.9rem;margin-top:0">Click any example to run it.</p>
+      <div class="chips" id="chips"></div>
+    </div>
+  </div>
+
+  <aside class="keys">
+    <h2>Key browser</h2>
+    <p class="meta" id="keymeta">0 keys</p>
+    <ul id="keylist"></ul>
+    <p style="color:#888;font-size:.8rem">Click a key to inspect it (<code>TYPE</code> + a read). TTL shows seconds left, or <code>—</code> for no expiry.</p>
+  </aside>
+</div>
+
+<h2>Commands supported</h2>
+<table>
+  <tr><th>Group</th><th>Commands</th></tr>
+  <tr><td>Strings</td><td><code>SET</code> (EX / PX / NX / XX / GET / KEEPTTL), <code>GET</code>, <code>DEL</code>, <code>EXISTS</code>, <code>INCR</code>, <code>DECR</code>, <code>INCRBY</code>, <code>DECRBY</code>, <code>EXPIRE</code>, <code>PEXPIRE</code>, <code>PERSIST</code>, <code>TTL</code>, <code>PTTL</code>, <code>TYPE</code></td></tr>
+  <tr><td>Lists</td><td><code>LPUSH</code>, <code>RPUSH</code>, <code>LPOP</code>, <code>RPOP</code>, <code>LRANGE</code>, <code>LLEN</code>, <code>LREM</code></td></tr>
+  <tr><td>Sets</td><td><code>SADD</code>, <code>SREM</code>, <code>SMEMBERS</code>, <code>SCARD</code></td></tr>
+  <tr><td>Hashes</td><td><code>HSET</code>, <code>HGET</code>, <code>HGETALL</code>, <code>HDEL</code>, <code>HLEN</code></td></tr>
+  <tr><td>Sorted sets</td><td><code>ZADD</code>, <code>ZRANGE</code> (WITHSCORES), <code>ZRANK</code>, <code>ZCARD</code>, <code>ZSCORE</code>, <code>ZREM</code></td></tr>
+  <tr><td>Transactions</td><td><code>MULTI</code>, <code>EXEC</code>, <code>DISCARD</code></td></tr>
+  <tr><td>Server</td><td><code>PING</code>, <code>ECHO</code>, <code>INFO</code>, <code>KEYS</code>, <code>FLUSHDB</code>, <code>DBSIZE</code>, <code>SELECT 0</code>, <code>RESET</code></td></tr>
+</table>
+<p>Not here (Java server only): streams (<code>XADD</code> / <code>XREAD</code>), pub/sub, replication, RDB/AOF. Run <code>java src/RedisServer.java</code> for those — see the <a href="index.html">Java demo page</a>.</p>
+
+<footer>build-your-own-redis-java · MIT licensed · Java 21 server + pure-JS in-browser engine · <a href="https://github.com/abhiyadavj2006-del/build-your-own-redis-java">GitHub</a></footer>
+
+<script src="redis.js"></script>
+<script>
+(function () {
+  'use strict';
+  var db = new RedisEngine(window.localStorage);
+  var out = document.getElementById('output');
+  var input = document.getElementById('cmd');
+  var keylist = document.getElementById('keylist');
+  var keymeta = document.getElementById('keymeta');
+  var history = [], hIndex = -1;
+
+  var EXAMPLES = [
+    'PING',
+    'SET name luna',
+    'GET name',
+    'INCR visits',
+    'SET temp v EX 60',
+    'TTL temp',
+    'RPUSH queue a b c',
+    'LRANGE queue 0 -1',
+    'SADD tags redis java js',
+    'SMEMBERS tags',
+    'HSET user name luna age 3',
+    'HGETALL user',
+    'ZADD scores 10 alice 20 bob',
+    'ZRANGE scores 0 -1 WITHSCORES',
+    'KEYS *',
+    'INFO',
+    'DBSIZE'
+  ];
+
+  function esc(s) { return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function printLine(text, cls) {
+    var div = document.createElement('div');
+    if (cls) div.className = cls;
+    div.textContent = text;
+    out.appendChild(div);
+    out.scrollTop = out.scrollHeight;
+  }
+  function run(line) {
+    if (!line.trim()) return;
+    printLine('127.0.0.1:6379> ' + line, 'cmd');
+    var result = db.runLine(line);
+    if (result) printLine(result, result.indexOf('(error)') === 0 ? 'err' : 'resp');
+    refreshKeys();
+  }
+  function refreshKeys() {
+    var items = db.inspect();
+    keymeta.textContent = items.length + (items.length === 1 ? ' key' : ' keys');
+    keylist.innerHTML = '';
+    if (!items.length) {
+      var li = document.createElement('li');
+      li.className = 'empty';
+      li.textContent = 'No keys yet — try SET name luna above.';
+      keylist.appendChild(li);
+      return;
+    }
+    items.forEach(function (it) {
+      var li = document.createElement('li');
+      var ttl = it.ttl === -1 ? '—' : it.ttl === -2 ? '—' : Math.ceil(it.ttl / 1000) + 's';
+      li.innerHTML = '<span class="k">' + esc(it.key) + '</span><span class="t">' + esc(it.type) + ' · ttl ' + ttl + '</span>' +
+        '<span class="p">' + esc(it.preview) + '</span>';
+      li.title = 'Click to inspect ' + it.key;
+      li.addEventListener('click', function () {
+        var read = { string: 'GET ', list: 'LRANGE ', set: 'SMEMBERS ', hash: 'HGETALL ', zset: 'ZRANGE ' }[it.type] || 'TYPE ';
+        var arg = it.type === 'list' ? ' 0 -1' : it.type === 'zset' ? ' 0 -1 WITHSCORES' : '';
+        run('TYPE ' + it.key);
+        run(read + it.key + arg);
+        input.focus();
+      });
+      keylist.appendChild(li);
+    });
+  }
+
+  // example chips
+  var chips = document.getElementById('chips');
+  EXAMPLES.forEach(function (ex) {
+    var b = document.createElement('button');
+    b.type = 'button';
+    var first = ex.split(' ')[0];
+    b.innerHTML = '<b>' + esc(first) + '</b> ' + esc(ex.slice(first.length + 1));
+    b.title = ex;
+    b.addEventListener('click', function () { run(ex); input.focus(); });
+    chips.appendChild(b);
+  });
+
+  input.addEventListener('keydown', function (e) {
+    if (e.key === 'Enter') {
+      var line = input.value;
+      if (line.trim()) { history.push(line); hIndex = history.length; }
+      input.value = '';
+      run(line);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (history.length && hIndex > 0) { hIndex--; input.value = history[hIndex]; }
+    } else if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (hIndex < history.length - 1) { hIndex++; input.value = history[hIndex]; }
+      else { hIndex = history.length; input.value = ''; }
+    } else if (e.key === 'l' && e.ctrlKey) {
+      e.preventDefault();
+      out.innerHTML = '';
+    }
+  });
+
+  document.getElementById('clearBtn').addEventListener('click', function () { out.innerHTML = ''; input.focus(); });
+  document.getElementById('flushBtn').addEventListener('click', function () {
+    if (window.confirm('Delete ALL keys in this browser?')) run('FLUSHDB');
+    input.focus();
+  });
+
+  // welcome banner + restore note
+  var existing = db.dbsize();
+  printLine('Live Redis 7.2.0-js — pure JavaScript, running in your browser.', 'sys');
+  printLine('No server. Data is saved in localStorage on this device.', 'sys');
+  if (existing) printLine('Restored ' + existing + ' key' + (existing === 1 ? '' : 's') + ' from your last visit. FLUSHDB wipes them.', 'sys');
+  printLine('Type HELP-style examples below, or a command like SET name luna.', 'sys');
+  refreshKeys();
+  input.focus();
+})();
+</script>
+</body>
+</html>
